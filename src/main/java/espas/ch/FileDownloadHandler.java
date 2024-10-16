@@ -42,9 +42,9 @@ public class FileDownloadHandler {
             }
         } catch (IOException e) {
             // Handle the exception or use default directories
-            directories.add("H:/temp2");
-            directories.add("H:/temp3");
-            directories.add("H:/temp4");
+            directories.add("c:/temp");
+            directories.add("c:/temp3");
+            directories.add("c:/temp2");
         }
         return directories;
     }
@@ -87,7 +87,7 @@ public class FileDownloadHandler {
         } catch (IOException e) {
             // Handle the exception or use a default path
         }
-        return Paths.get("H:/temp");
+        return Paths.get("c:/temp");
     }
 
     private void startMonitoring() {
