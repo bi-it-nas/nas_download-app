@@ -6,6 +6,7 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class FileDownloadHandler {
     private JFrame frame;
@@ -37,7 +38,7 @@ public class FileDownloadHandler {
         try (BufferedReader reader = new BufferedReader(new FileReader("directories.txt"))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                directories.add(line);
+                directories.add(line.toLowerCase());
             }
         } catch (IOException e) {
             // Handle the exception or use default directories
@@ -51,7 +52,7 @@ public class FileDownloadHandler {
     public void saveDirectories(List<String> directories) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter("directories.txt"))) {
             for (String dir : directories) {
-                writer.write(dir);
+                writer.write(dir.toLowerCase());
                 writer.newLine();
             }
         } catch (IOException e) {

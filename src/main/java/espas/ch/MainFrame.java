@@ -6,14 +6,18 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MainFrame extends JFrame {
     private List<String> preselectedDirectories;
     private JTextField directoryInputField;
     private FileDownloadHandler fileDownloadHandler;
+    private boolean isDialogOpen = false;
 
     public MainFrame(List<String> preselectedDirectories, FileDownloadHandler fileDownloadHandler) {
-        this.preselectedDirectories = preselectedDirectories;
+        this.preselectedDirectories = preselectedDirectories.stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toList());
         this.fileDownloadHandler = fileDownloadHandler;
 
         setTitle("File Organizer");
@@ -22,6 +26,7 @@ public class MainFrame extends JFrame {
         setSize(400, 200);
         setLocationRelativeTo(null);
         setAlwaysOnTop(true);
+        setAutoRequestFocus(true);
         setResizable(false);
 
         // Create components
@@ -66,15 +71,15 @@ public class MainFrame extends JFrame {
     private void showAddDirectoryInput() {
         int result = JOptionPane.showConfirmDialog(this, directoryInputField, "Enter new directory path:", JOptionPane.OK_CANCEL_OPTION);
         if (result == JOptionPane.OK_OPTION) {
-            String newPath = directoryInputField.getText().trim();
-            if (isValidPath(newPath)) {
+            String newPath = directoryInputField.getText().trim().toLowerCase();
+            if (isValidPath(newPath) && !preselectedDirectories.contains(newPath)) {
                 preselectedDirectories.add(newPath);
                 directoryInputField.setText("");
                 fileDownloadHandler.saveDirectories(preselectedDirectories); // Save changes
                 JOptionPane.showMessageDialog(this, "Directory added: " + newPath);
             } else {
-                JOptionPane.showMessageDialog(this, "Invalid path, please try again.");
-                showAddDirectoryInput();
+                JOptionPane.showMessageDialog(this, "Invalid or duplicate path, please try again.");
+                SwingUtilities.invokeLater(this::showAddDirectoryInput); // Reopen the dialog
             }
         }
     }
@@ -94,28 +99,36 @@ public class MainFrame extends JFrame {
     }
 
     public void handleNewDownload(File downloadedFile) {
-        String selectedDirectory = (String) JOptionPane.showInputDialog(
-                this,
-                "Select a directory to move the file:",
-                "Directory Selection",
-                JOptionPane.QUESTION_MESSAGE,
-                null,
-                preselectedDirectories.toArray(),
-                preselectedDirectories.get(0)
-        );
+        if (isDialogOpen) {
+            return;
+        }
+        isDialogOpen = true;
 
-        if (selectedDirectory != null) {
-            String newName = JOptionPane.showInputDialog(this, "Enter new file name (without extension):", downloadedFile.getName());
-            if (newName != null && !newName.isEmpty()) {
-                String fileExtension = getFileExtension(downloadedFile);
-                String newFileName = newName + "." + fileExtension;
-                File newFile = new File(selectedDirectory, newFileName);
-                boolean success = FileHandler.renameFile(downloadedFile, newFile);
-                if (success) {
-                    JOptionPane.showMessageDialog(this, "File moved to: " + newFile.getAbsolutePath());
+        SwingUtilities.invokeLater(() -> {
+            String selectedDirectory = (String) JOptionPane.showInputDialog(
+                    this,
+                    "Select a directory to move the file:",
+                    "Directory Selection",
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    preselectedDirectories.toArray(),
+                    preselectedDirectories.get(0)
+            );
+
+            if (selectedDirectory != null) {
+                String newName = JOptionPane.showInputDialog(this, "Enter new file name (without extension):", downloadedFile.getName());
+                if (newName != null && !newName.isEmpty()) {
+                    String fileExtension = getFileExtension(downloadedFile);
+                    String newFileName = newName + "." + fileExtension;
+                    File newFile = new File(selectedDirectory, newFileName);
+                    boolean success = FileHandler.renameFile(downloadedFile, newFile);
+                    if (success) {
+                        JOptionPane.showMessageDialog(this, "File moved to: " + newFile.getAbsolutePath());
+                    }
                 }
             }
-        }
+            isDialogOpen = false;
+        });
     }
 
     private String getFileExtension(File file) {
