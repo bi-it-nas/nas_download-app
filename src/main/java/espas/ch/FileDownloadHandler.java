@@ -2,32 +2,22 @@ package espas.ch;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class FileDownloadHandler {
     private JFrame frame;
-    private List<String> preselectedDirectories; // Declare list of preselected directories
-    private WatchService watchService; // Declare WatchService as an instance variable
-    private Path monitoredPath; // Current monitored path
+    private List<String> preselectedDirectories;
+    private WatchService watchService;
+    private Path monitoredPath;
     private MainFrame mainFrame;
 
     public FileDownloadHandler() {
-        // Initialize the list of preselected directories
-        preselectedDirectories = new ArrayList<>();
-        preselectedDirectories.add("H:/temp2");
-        preselectedDirectories.add("H:/temp3");
-        preselectedDirectories.add("H:/temp4");
-
-        // Set default monitored path
+        preselectedDirectories = loadDirectories(); // Load directories from a file
         monitoredPath = Paths.get("H:/temp");
 
-        // Create the main frame
         frame = new JFrame("File Download Handler");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(400, 200);
@@ -36,26 +26,52 @@ public class FileDownloadHandler {
         frame.setResizable(false);
         frame.setLocationRelativeTo(null); // Center the frame on the screen
 
-        // Initialize and show main frame
-        mainFrame = new MainFrame(preselectedDirectories);
+        mainFrame = new MainFrame(preselectedDirectories, this);
         mainFrame.setVisible(true);
 
-        startMonitoring(); // Start monitoring on creation
+        startMonitoring();
+    }
+
+    public List<String> loadDirectories() {
+        List<String> directories = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader("directories.txt"))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                directories.add(line);
+            }
+        } catch (IOException e) {
+            // Handle the exception or use default directories
+            directories.add("H:/temp2");
+            directories.add("H:/temp3");
+            directories.add("H:/temp4");
+        }
+        return directories;
+    }
+
+    public void saveDirectories(List<String> directories) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("directories.txt"))) {
+            for (String dir : directories) {
+                writer.write(dir);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(frame, "Error saving directories: " + e.getMessage());
+        }
     }
 
     private void startMonitoring() {
         try {
-            watchService = FileSystems.getDefault().newWatchService(); // Initialize the WatchService
-            monitoredPath.register(watchService, StandardWatchEventKinds.ENTRY_CREATE); // Listen for new files
+            watchService = FileSystems.getDefault().newWatchService();
+            monitoredPath.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
 
             new Thread(() -> {
                 while (true) {
                     try {
-                        WatchKey key = watchService.take(); // Wait for a key
+                        WatchKey key = watchService.take();
                         for (WatchEvent<?> event : key.pollEvents()) {
                             if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
                                 Path filePath = monitoredPath.resolve((Path) event.context());
-                                mainFrame.handleNewDownload(filePath.toFile()); // Pass the file to the main frame
+                                mainFrame.handleNewDownload(filePath.toFile());
                             }
                         }
                         key.reset();
@@ -71,7 +87,6 @@ public class FileDownloadHandler {
     }
 
     public static void main(String[] args) {
-        // Run the GUI on the Event Dispatch Thread
         SwingUtilities.invokeLater(FileDownloadHandler::new);
     }
 }
