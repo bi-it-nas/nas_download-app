@@ -1,4 +1,4 @@
-package espas.ch; // Make sure this matches your folder structure
+package espas.ch; // Ensure this matches your folder structure
 
 import javax.swing.*;
 import java.awt.*;
@@ -7,107 +7,140 @@ import java.awt.event.ActionListener;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 
-public class MainFrame {
-    private JFrame frame;
-    private JTextField directoryInputField;
-    private JLabel selectedDirectoryLabel;
+public class MainFrame extends JFrame {
     private List<String> preselectedDirectories;
+    private JTextField directoryInputField;
 
-    public MainFrame() {
-        // Initialize preselected directories
-        preselectedDirectories = new ArrayList<>();
-        preselectedDirectories.add("H:/temp2");
-        preselectedDirectories.add("H:/temp3");
-        preselectedDirectories.add("H:/temp4");
+    public MainFrame(List<String> preselectedDirectories) {
+        this.preselectedDirectories = preselectedDirectories;
 
-        // Create the main frame
-        frame = new JFrame("File Download Handler");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(400, 200);
-        frame.setLayout(new FlowLayout());
-        frame.setLocationRelativeTo(null); // Center the window
+        // Set up the main frame
+        setTitle("File Organizer");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new FlowLayout());
+        setSize(400, 200);
+        setLocationRelativeTo(null); // Center the frame on launch
+        setAlwaysOnTop(true); // Keep the window on top
+        setResizable(false);
 
-        // Create components
-        JButton plusButton = new JButton("+");
-        JButton minusButton = new JButton("-");
-        JButton swapButton = new JButton("↔");
+        // Create buttons
+        JButton addButton = createButton("+");
+        JButton removeButton = createButton("-");
+        JButton swapButton = createButton("⏷"); // Placeholder for the swap icon
 
-        directoryInputField = new JTextField(20);
-        selectedDirectoryLabel = new JLabel("No directory selected.");
-        selectedDirectoryLabel.setForeground(Color.RED); // For highlighting
+        // Add button actions
+        addButton.addActionListener(e -> showAddDirectoryInput());
+        removeButton.addActionListener(e -> showRemoveDirectoryInput());
+        swapButton.addActionListener(e -> showSwapDirectoryInput());
 
-        // Set button actions
-        plusButton.addActionListener(e -> showDirectoryInputDialog("Add Directory:"));
-        minusButton.addActionListener(e -> showDirectoryDropdown());
-        swapButton.addActionListener(e -> showDirectoryInputDialog("Change Monitoring Path:"));
+        // Add buttons to the frame
+        add(addButton);
+        add(removeButton);
+        add(swapButton);
 
-        // Add components to the frame
-        frame.add(plusButton);
-        frame.add(minusButton);
-        frame.add(swapButton);
-        frame.add(selectedDirectoryLabel);
-        frame.add(directoryInputField);
+        // Center buttons
+        for (Component component : getContentPane().getComponents()) {
+            component.setPreferredSize(new Dimension(80, 40)); // Set preferred button size
+        }
 
-        // Focus on the first button to allow keyboard navigation
-        plusButton.requestFocusInWindow();
-
-        // Set button colors and styles
-        styleButtons(plusButton, minusButton, swapButton);
-
-        frame.setVisible(true);
+        pack(); // Resize the frame to fit buttons
+        setVisible(true); // Show the frame
     }
 
-    private void showDirectoryInputDialog(String title) {
-        String currentPath = (title.equals("Change Monitoring Path:")) ? "Current Path: " + selectedDirectoryLabel.getText() : "";
-        String newPath = JOptionPane.showInputDialog(frame, title, currentPath);
+    private JButton createButton(String label) {
+        JButton button = new JButton(label);
+        button.setPreferredSize(new Dimension(80, 40));
+        button.setFocusPainted(false); // Remove focus border
+        button.setBorder(BorderFactory.createLineBorder(Color.GRAY, 2)); // Set a simple border
+        button.setBackground(new Color(240, 240, 240)); // Light background color
+        button.setForeground(Color.BLACK); // Button text color
+        button.setFont(new Font("San Francisco", Font.PLAIN, 16)); // Set font
+        button.setOpaque(true); // Make sure the background color shows
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.GRAY, 2),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10) // Add padding to simulate rounding
+        ));
+        return button;
+    }
 
-        if (newPath != null && !newPath.trim().isEmpty()) {
-            if (Files.isDirectory(Paths.get(newPath))) {
-                if (title.equals("Add Directory:")) {
-                    preselectedDirectories.add(newPath);
-                    JOptionPane.showMessageDialog(frame, "Directory added: " + newPath);
-                } else if (title.equals("Change Monitoring Path:")) {
-                    selectedDirectoryLabel.setText("Monitoring Path: " + newPath);
-                    // Implement changing monitored directory logic if needed
-                }
+    private void showAddDirectoryInput() {
+        if (directoryInputField == null) {
+            directoryInputField = new JTextField(20);
+        }
+        int result = JOptionPane.showConfirmDialog(this, directoryInputField, "Enter new directory path:", JOptionPane.OK_CANCEL_OPTION);
+        if (result == JOptionPane.OK_OPTION) {
+            String newPath = directoryInputField.getText().trim();
+            if (isValidPath(newPath)) {
+                preselectedDirectories.add(newPath);
+                directoryInputField.setText(""); // Clear input field
+                JOptionPane.showMessageDialog(this, "Directory added: " + newPath);
             } else {
-                JOptionPane.showMessageDialog(frame, "Invalid directory path. Please enter a valid path.");
+                JOptionPane.showMessageDialog(this, "Invalid path, please try again.");
+                showAddDirectoryInput(); // Show input again
             }
         }
     }
 
-    private void showDirectoryDropdown() {
+    private void showRemoveDirectoryInput() {
+        String[] options = preselectedDirectories.toArray(new String[0]);
+        String selected = (String) JOptionPane.showInputDialog(this, "Select a directory to remove:", "Remove Directory", JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
+        if (selected != null) {
+            preselectedDirectories.remove(selected);
+            JOptionPane.showMessageDialog(this, "Directory removed: " + selected);
+        }
+    }
+
+    private void showSwapDirectoryInput() {
+        String newPath = (String) JOptionPane.showInputDialog(this, "Enter new path to monitor:", "Swap Directory", JOptionPane.PLAIN_MESSAGE, null, null, "");
+        if (newPath != null && isValidPath(newPath)) {
+            // Implement swapping logic here
+            JOptionPane.showMessageDialog(this, "Swap path set to: " + newPath);
+        } else {
+            JOptionPane.showMessageDialog(this, "Invalid path.");
+        }
+    }
+
+    private boolean isValidPath(String path) {
+        return Files.exists(Paths.get(path)); // Check if the path exists
+    }
+
+    public void handleNewDownload(File downloadedFile) {
+        // Display a selection dialog for the user to choose a directory
         String selectedDirectory = (String) JOptionPane.showInputDialog(
-                frame,
-                "Select a directory to remove:",
-                "Directory Removal",
+                this,
+                "Select a directory to move the file:",
+                "Directory Selection",
                 JOptionPane.QUESTION_MESSAGE,
                 null,
-                preselectedDirectories.toArray(),
-                preselectedDirectories.get(0)
+                preselectedDirectories.toArray(), // Use the class-level variable
+                preselectedDirectories.get(0) // Default selection
         );
 
+        // Check if a directory was selected
         if (selectedDirectory != null) {
-            int response = JOptionPane.showConfirmDialog(frame, "Are you sure you want to remove " + selectedDirectory + "?", "Confirm Removal", JOptionPane.YES_NO_OPTION);
-            if (response == JOptionPane.YES_OPTION) {
-                preselectedDirectories.remove(selectedDirectory);
-                JOptionPane.showMessageDialog(frame, "Directory removed: " + selectedDirectory);
+            // Prompt for a new file name (without changing the extension)
+            String newName = JOptionPane.showInputDialog(this, "Enter new file name (without extension):", downloadedFile.getName());
+            if (newName != null && !newName.isEmpty()) {
+                // Preserve the original file extension
+                String fileExtension = getFileExtension(downloadedFile);
+                String newFileName = newName + "." + fileExtension;
+                // Move the file (or implement renaming logic)
+                File newFile = new File(selectedDirectory, newFileName);
+                boolean success = FileHandler.renameFile(downloadedFile, newFile);
+                if (success) {
+                    JOptionPane.showMessageDialog(this, "File moved to: " + newFile.getAbsolutePath());
+                } else {
+                    JOptionPane.showMessageDialog(this, "Failed to move file.");
+                }
             }
         }
     }
 
-    private void styleButtons(JButton... buttons) {
-        for (JButton button : buttons) {
-            button.setFont(new Font("San Francisco", Font.PLAIN, 16));
-            button.setBackground(Color.LIGHT_GRAY);
-            button.setFocusPainted(false);
-        }
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(MainFrame::new);
+    private String getFileExtension(File file) {
+        String name = file.getName();
+        int lastIndex = name.lastIndexOf('.');
+        return (lastIndex == -1) ? "" : name.substring(lastIndex + 1); // Get file extension
     }
 }

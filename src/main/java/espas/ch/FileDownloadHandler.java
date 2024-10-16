@@ -1,19 +1,46 @@
-package espas.ch; // Make sure this matches your folder structure
+package espas.ch;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.File; // Importing the File class
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class FileDownloadHandler {
+    private JFrame frame;
+    private List<String> preselectedDirectories; // Declare list of preselected directories
     private WatchService watchService; // Declare WatchService as an instance variable
     private Path monitoredPath; // Current monitored path
+    private MainFrame mainFrame;
 
     public FileDownloadHandler() {
-        // Default monitored path (change as needed)
+        // Initialize the list of preselected directories
+        preselectedDirectories = new ArrayList<>();
+        preselectedDirectories.add("H:/temp2");
+        preselectedDirectories.add("H:/temp3");
+        preselectedDirectories.add("H:/temp4");
+
+        // Set default monitored path
         monitoredPath = Paths.get("H:/temp");
-        startMonitoring();
+
+        // Create the main frame
+        frame = new JFrame("File Download Handler");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(400, 200);
+        frame.setLayout(new FlowLayout());
+        frame.setAlwaysOnTop(true);
+        frame.setResizable(false);
+        frame.setLocationRelativeTo(null); // Center the frame on the screen
+
+        // Initialize and show main frame
+        mainFrame = new MainFrame(preselectedDirectories);
+        mainFrame.setVisible(true);
+
+        startMonitoring(); // Start monitoring on creation
     }
 
     private void startMonitoring() {
@@ -28,7 +55,7 @@ public class FileDownloadHandler {
                         for (WatchEvent<?> event : key.pollEvents()) {
                             if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
                                 Path filePath = monitoredPath.resolve((Path) event.context());
-                                handleNewDownload(filePath.toFile()); // Handle the new download
+                                mainFrame.handleNewDownload(filePath.toFile()); // Pass the file to the main frame
                             }
                         }
                         key.reset();
@@ -43,14 +70,8 @@ public class FileDownloadHandler {
         }
     }
 
-    private void handleNewDownload(File downloadedFile) {
-        // Logic for handling new downloads
-        System.out.println("New file detected: " + downloadedFile.getAbsolutePath());
-        // You can further process the file as needed
-    }
-
     public static void main(String[] args) {
-        // Run the file handler to monitor files
-        new FileDownloadHandler();
+        // Run the GUI on the Event Dispatch Thread
+        SwingUtilities.invokeLater(FileDownloadHandler::new);
     }
 }
