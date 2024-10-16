@@ -1,0 +1,3 @@
+h:/temp2
+h:/temp6
+h:/temp3
