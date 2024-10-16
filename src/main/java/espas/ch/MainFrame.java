@@ -2,7 +2,9 @@ package espas.ch;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
@@ -10,9 +12,13 @@ import java.util.stream.Collectors;
 
 public class MainFrame extends JFrame {
     private List<String> preselectedDirectories;
-    private JTextField directoryInputField;
+    private JButton directoryButton;
     private FileDownloadHandler fileDownloadHandler;
     private boolean isDialogOpen = false;
+    private JTextField directoryInputField = new JTextField(20);
+    private JLabel errorLabel = new JLabel();
+    private JPanel mainPanel;
+    private CardLayout cardLayout;
 
     public MainFrame(List<String> preselectedDirectories, FileDownloadHandler fileDownloadHandler) {
         this.preselectedDirectories = preselectedDirectories.stream()
@@ -22,16 +28,28 @@ public class MainFrame extends JFrame {
 
         setTitle("File Organizer");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLayout(new FlowLayout());
+        setLayout(new BorderLayout());
         setSize(400, 200);
         setLocationRelativeTo(null);
         setAlwaysOnTop(true);
         setAutoRequestFocus(true);
         setResizable(false);
 
+        cardLayout = new CardLayout();
+        mainPanel = new JPanel(cardLayout);
+
         // Create components
-        JLabel directoryLabel = new JLabel("Monitored Directory:");
-        directoryInputField = new JTextField(20);
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        JLabel directoryLabel = new JLabel("Monitoring:");
+        directoryButton = new JButton(fileDownloadHandler.getMonitoredPath().toString());
+        directoryButton.setPreferredSize(new Dimension(200, 30));
+        directoryButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                switchToTextField();
+            }
+        });
+
         JButton addButton = createButton("+");
         JButton removeButton = createButton("-");
 
@@ -39,17 +57,66 @@ public class MainFrame extends JFrame {
         addButton.addActionListener(e -> showAddDirectoryInput());
         removeButton.addActionListener(e -> showRemoveDirectoryInput());
 
-        // Add components to frame
-        add(directoryLabel);
-        add(directoryInputField);
-        add(addButton);
-        add(removeButton);
+        // Add components to button panel
+        buttonPanel.add(directoryLabel);
+        buttonPanel.add(directoryButton);
+        buttonPanel.add(addButton);
+        buttonPanel.add(removeButton);
 
-        // Focus on the input field
-        directoryInputField.requestFocusInWindow();
+        // Create text field panel
+        JPanel textFieldPanel = new JPanel(new FlowLayout());
+        JTextField textField = new JTextField(directoryButton.getText(), 20);
+        JButton confirmButton = createButton("Enter");
+
+        textField.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                updateMonitoredPath(textField.getText().trim());
+                switchToButton();
+            }
+        });
+
+        confirmButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                updateMonitoredPath(textField.getText().trim());
+                switchToButton();
+            }
+        });
+
+        textFieldPanel.add(textField);
+        textFieldPanel.add(confirmButton);
+
+        // Add panels to main panel
+        mainPanel.add(buttonPanel, "buttonPanel");
+        mainPanel.add(textFieldPanel, "textFieldPanel");
+
+        add(mainPanel, BorderLayout.CENTER);
+        add(errorLabel, BorderLayout.SOUTH);
+
+        cardLayout.show(mainPanel, "buttonPanel");
 
         pack();
         setVisible(true);
+    }
+
+    private void switchToTextField() {
+        cardLayout.show(mainPanel, "textFieldPanel");
+    }
+
+    private void switchToButton() {
+        directoryButton.setText(fileDownloadHandler.getMonitoredPath().toString());
+        cardLayout.show(mainPanel, "buttonPanel");
+    }
+
+    private void updateMonitoredPath(String newPath) {
+        if (isValidPath(newPath)) {
+            fileDownloadHandler.setMonitoredPath(Paths.get(newPath));
+            fileDownloadHandler.saveMonitoredPath(newPath); // Save the new path
+            errorLabel.setText("");
+        } else {
+            errorLabel.setText("Invalid path");
+        }
     }
 
     private JButton createButton(String label) {

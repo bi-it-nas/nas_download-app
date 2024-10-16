@@ -1,12 +1,9 @@
-package espas.ch; // Ensure this matches your folder structure
+package espas.ch;
 
 import java.io.File;
 
 public class FileHandler {
-
-    public static boolean renameFile(File originalFile, File newFile) {
-        return originalFile.renameTo(newFile);
+    public static boolean renameFile(File oldFile, File newFile) {
+        return oldFile.renameTo(newFile);
     }
-
-    // Additional file operations can be added here
 }

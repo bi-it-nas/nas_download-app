@@ -1,12 +1,11 @@
 package espas.ch;
 
 import javax.swing.*;
-import java.awt.*;
+import java.awt.FlowLayout;
 import java.io.*;
 import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class FileDownloadHandler {
     private JFrame frame;
@@ -14,10 +13,11 @@ public class FileDownloadHandler {
     private WatchService watchService;
     private Path monitoredPath;
     private MainFrame mainFrame;
+    private Thread watchThread;
 
     public FileDownloadHandler() {
         preselectedDirectories = loadDirectories(); // Load directories from a file
-        monitoredPath = Paths.get("H:/temp");
+        monitoredPath = loadMonitoredPath(); // Load monitored path from a file
 
         frame = new JFrame("File Download Handler");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -60,27 +60,67 @@ public class FileDownloadHandler {
         }
     }
 
+    public Path getMonitoredPath() {
+        return monitoredPath;
+    }
+
+    public void setMonitoredPath(Path monitoredPath) {
+        this.monitoredPath = monitoredPath;
+        saveMonitoredPath(monitoredPath.toString());
+        startMonitoring();
+    }
+
+    public void saveMonitoredPath(String path) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("monitored_path.txt"))) {
+            writer.write(path);
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(frame, "Error saving monitored path: " + e.getMessage());
+        }
+    }
+
+    private Path loadMonitoredPath() {
+        try (BufferedReader reader = new BufferedReader(new FileReader("monitored_path.txt"))) {
+            String path = reader.readLine();
+            if (path != null) {
+                return Paths.get(path);
+            }
+        } catch (IOException e) {
+            // Handle the exception or use a default path
+        }
+        return Paths.get("H:/temp");
+    }
+
     private void startMonitoring() {
+        if (watchThread != null && watchThread.isAlive()) {
+            watchThread.interrupt();
+        }
+
         try {
+            if (watchService != null) {
+                watchService.close();
+            }
             watchService = FileSystems.getDefault().newWatchService();
             monitoredPath.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
 
-            new Thread(() -> {
+            watchThread = new Thread(() -> {
                 while (true) {
                     try {
                         WatchKey key = watchService.take();
                         for (WatchEvent<?> event : key.pollEvents()) {
-                            if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
-                                Path filePath = monitoredPath.resolve((Path) event.context());
-                                mainFrame.handleNewDownload(filePath.toFile());
+                            WatchEvent.Kind<?> kind = event.kind();
+                            if (kind == StandardWatchEventKinds.ENTRY_CREATE) {
+                                Path newPath = monitoredPath.resolve((Path) event.context());
+                                System.out.println("New file detected: " + newPath);
+                                mainFrame.handleNewDownload(newPath.toFile());
                             }
                         }
                         key.reset();
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        break;
                     }
                 }
-            }).start();
+            });
+            watchThread.start();
 
         } catch (IOException e) {
             e.printStackTrace();
